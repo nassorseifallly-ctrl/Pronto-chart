@@ -5,68 +5,29 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**'
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Download project
         uses: actions/checkout@v4
 
-      - name: Extract Android Project
-        run: |
-          set -e
-          mkdir -p pronto
-
-          ZIP=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
-
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: No ZIP file found"
-            exit 1
-          fi
-
-          unzip -o "$ZIP" -d pronto
-
-          while true; do
-            NESTED=$(find pronto -type f -name "*.zip" | head -n 1)
-
-            if [ -z "$NESTED" ]; then
-              break
-            fi
-
-            DEST="$(dirname "$NESTED")/extracted"
-            mkdir -p "$DEST"
-            unzip -o "$NESTED" -d "$DEST"
-            rm "$NESTED"
-          done
-
-          PROJECT=$(find pronto -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
-
-          if [ -z "$PROJECT" ]; then
-            echo "ERROR: Android Gradle project not found"
-            find pronto -maxdepth 6 -type f | head -200
-            exit 1
-          fi
-
-          PROJECT_DIR=$(dirname "$PROJECT")
-
-          if [ ! -f "$PROJECT_DIR/gradlew" ]; then
-            echo "ERROR: Gradle wrapper not found"
-            exit 1
-          fi
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Setup Java
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Build APK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build PRONTO CHAT
         run: |
-          cd "$PROJECT_DIR"
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -74,5 +35,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PRONTO-CHAT-APK
-          path: "**/build/outputs/apk/debug/*.apk"
-          if-no-files-found: error
+          path: app/build/outputs/apk/debug/*.apk
